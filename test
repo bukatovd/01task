@@ -1,0 +1,78 @@
+pipeline {
+   agent any
+environment {
+    EMAIL_TO = 'bukatovd@gmail.com'
+}
+    stages {
+        stage('GitHub') {
+            steps {
+                git 'https://github.com/kubernetes-client/java.git'
+                }
+            }
+        stage('Preparation') {
+            steps {
+                sh 'mvn archetype:generate -B -X ' +
+                '-DarchetypeGroupId=org.apache.maven.archetypes ' +
+                '-DarchetypeArtifactId=maven-archetype-quickstart ' +
+                '-DgroupId=com.company -DartifactId=myproject'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir ('myproject') {
+                sh 'mvn package'
+                }
+            }
+        }
+        stage('Hash') {
+            steps {
+                dir ('myproject/target') {
+                    sh label: '', script: '''md5=$(md5sum *.jar | cut -d \' \' -f 1)
+                    echo $md5
+                    echo $md5 > ./artefact.md5
+                    echo $(cat artefact.md5)'''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'I have finished'
+        }
+        success {
+            dir ('myproject/target') {
+            archive '*.jar'
+            archive '*.md5'
+            }
+            emailext (
+              attachLog: true, compressLog: true,
+              body: "Build: $BUILD_URL",
+              subject: "Job $JOB_NAME # $BUILD_NUMBER - Job succeeded!",
+              to: EMAIL_TO)
+
+            cleanWs()
+            echo 'Job succeeded!'
+        }
+        unstable {
+          emailext (
+            attachLog: true, compressLog: true,
+            body: "Build: $BUILD_URL",
+            subject: 'Job $JOB_NAME # $BUILD_NUMBER - I am unstable',
+            to: EMAIL_TO)
+            echo 'I am unstable :/'
+        }
+        failure {
+          emailext (
+            attachLog: true, compressLog: true,
+            body: "Build: $BUILD_URL",
+            subject: "Job $JOB_NAME # $BUILD_NUMBER - I failed",
+            to: EMAIL_TO)
+          echo 'I failed :('
+        }
+        changed {
+            echo 'Things were different before...'
+        }
+    }
+}
