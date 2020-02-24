@@ -13,12 +13,12 @@ pipeline {
     stages {
         stage("First step") {
             steps {
-                sh 'ssh root@10.10.10.190 \'hostname\''
+                sh 'ssh root@10.10.10.190 -i /home/dbukatau/.ssh/id_rsa \'hostname\''
             }
         }
         stage("Second step") {
             steps {
-                sh 'ssh root@10.180.10.190 \'uptime\''
+                sh 'ssh root@10.180.10.190 -i /home/dbukatau/.ssh/id_rsa \'uptime\''
             }
         }
     }
